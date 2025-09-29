@@ -9,10 +9,13 @@ import torch.utils.data as data
 from PIL import Image
 import torchvision.transforms as transforms
 from abc import ABC, abstractmethod
+import logging
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
 
 class BaseDataset(data.Dataset, ABC):
     """This class is an abstract base class (ABC) for datasets.
-
     To create a subclass, you need to implement the following four functions:
     -- <__init__>:                      initialize the class, first call BaseDataset.__init__(self, opt).
     -- <__len__>:                       return the size of dataset.
@@ -21,7 +24,6 @@ class BaseDataset(data.Dataset, ABC):
 
     def __init__(self, opt):
         """Initialize the class; save the options in the class
-
         Parameters:
             opt (Option class)-- stores all the experiment flags; needs to be a subclass of BaseOptions
         """
@@ -36,10 +38,8 @@ class BaseDataset(data.Dataset, ABC):
     @abstractmethod
     def __getitem__(self, index):
         """Return a data point and its metadata information.
-
         Parameters:
             index - - a random integer for data indexing
-
         Returns:
             a dictionary of data with their names. It ususally contains the data itself and its metadata information.
         """
@@ -80,7 +80,7 @@ def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, conve
             transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'], opt.crop_size)))
 
     if opt.preprocess == 'none':
-        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base=4, method=method)))
+        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base=1, method=method)))
 
     if not opt.no_flip:
         if params is None:
@@ -133,10 +133,12 @@ def __flip(img, flip):
 
 
 def __print_size_warning(ow, oh, w, h):
-    """Print warning information about image size(only print once)"""
+    """Print warning information about image size (only print once)"""
     if not hasattr(__print_size_warning, 'has_printed'):
-        logger.warning("The image size needs to be a multiple of 4. "
-              "The loaded image size was (%d, %d), so it was adjusted to "
-              "(%d, %d). This adjustment will be done to all images "
-              "whose sizes are not multiples of 4" % (ow, oh, w, h))
+        logger.warning(
+            f"The image size needs to be a multiple of 4. "
+            f"The loaded image size was ({ow}, {oh}), so it was adjusted to "
+            f"({w}, {h}). This adjustment will be done to all images "
+            f"whose sizes are not multiples of 4"
+        )
         __print_size_warning.has_printed = True

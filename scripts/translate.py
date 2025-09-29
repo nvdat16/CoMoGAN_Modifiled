@@ -11,9 +11,7 @@ from math import pi
 from PIL import Image
 from munch import Munch
 from argparse import ArgumentParser as AP
-from torchvision.transforms import ToPILImage
-
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToPILImage, ToTensor
 
 p_mod = str(pathlib.Path('.').absolute())
 sys.path.append(p_mod.replace("/scripts", ""))
@@ -21,50 +19,43 @@ sys.path.append(p_mod.replace("/scripts", ""))
 from data.base_dataset import get_transform
 from networks import create_model
 
+device='cuda' if torch.cuda.is_available() else 'cpu'
 def printProgressBar(i, max, postText):
-    n_bar = 20 #size of progress bar
-    j= i/max
+    n_bar = 20 # size of progress bar
+    j = i / max
     sys.stdout.write('\r')
     sys.stdout.write(f"[{'=' * int(n_bar * j):{n_bar}s}] {int(100 * j)}%  {postText}")
     sys.stdout.flush()
 
 def inference(model, opt, A_path, phi):
     t_phi = torch.tensor(phi)
-    # Load the image
     A_img = Image.open(A_path).convert('RGB')
-    # Apply image transformation
     A = get_transform(opt, convert=False)(A_img)
-    # Normalization between -1 and 1
     img_real = (((ToTensor()(A)) * 2) - 1).unsqueeze(0)
-    # Forward our image into the model with the specified ɸ
-    img_fake = model.forward(img_real.cuda(0), t_phi.cuda(0))
+    img_fake = model.forward(img_real.to(device), t_phi.to(device))
 
     return ToPILImage()((img_fake[0].cpu() + 1) / 2)
 
 def main(cmdline):
-
-    if cmdline.phi < 0 or cmdline.phi > (2 * pi):
-        raise ValueError("Value should be between [0,2𝜋]")
-
     if cmdline.checkpoint is None:
         # Load names of directories inside /logs
         p = pathlib.Path('./logs')
-        list_run_id = [str(x).split('/')[1] for x in p.iterdir() if x.is_dir()]
+        list_run_id = [x.name for x in p.iterdir() if x.is_dir()]
 
         RUN_ID = list_run_id[0]
         root_dir = os.path.join('logs', RUN_ID, 'tensorboard', 'default', 'version_0')
         p = pathlib.Path(root_dir + '/checkpoints')
         # Load a list of checkpoints, use the last one by default
-        list_checkpoint = [str(x).split('checkpoints/')[1] for x in p.iterdir() if 'iter' in str(x)]
-        list_checkpoint.sort(reverse = True, key=lambda x: int(x.split('_')[1].split('.pth')[0]))
+        list_checkpoint = [x.name for x in p.iterdir() if 'iter' in x.name]
+        list_checkpoint.sort(reverse=True, key=lambda x: int(x.split('_')[1].split('.pth')[0]))
 
         CHECKPOINT = list_checkpoint[0]
     else:
-        RUN_ID = (cmdline.checkpoint.split("/tensorboard")[0]).split("/")[-1]
-        root_dir = cmdline.checkpoint.split("/checkpoints")[0]
-        CHECKPOINT = cmdline.checkpoint.split('checkpoints/')[1]
+        RUN_ID = os.path.basename(cmdline.checkpoint.split("/tensorboard")[0])
+        root_dir = os.path.dirname(cmdline.checkpoint.split("/checkpoints")[0])
+        CHECKPOINT = os.path.basename(cmdline.checkpoint.split('checkpoints/')[1])
 
-    print("Load checkpoint {} from {}".format(CHECKPOINT, RUN_ID))
+    print(f"Load checkpoint {CHECKPOINT} from {RUN_ID}")
 
     # Load parameters
     with open(os.path.join(root_dir, 'hparams.yaml')) as cfg_file:
@@ -73,17 +64,15 @@ def main(cmdline):
     opt.no_flip = True
     # Load parameters to the model, load the checkpoint
     model = create_model(opt)
-    model = model.load_from_checkpoint(
-        os.path.join(root_dir, 'checkpoints', CHECKPOINT),
-        map_location="cpu",
-        weights_only=False  # thêm dòng này
-    )
+    model = model.load_from_checkpoint(os.path.join(root_dir, 'checkpoints', CHECKPOINT))
     # Transfer the model to the GPU
-    model.to('cuda');
-    # Load paths of all files contain in /Day
+    model.to(device)
+
+    # Load paths of all files contained in /Day
     p = pathlib.Path(cmdline.load_path)
-    dataset_paths = [str(x).replace(cmdline.load_path,'') for x in p.iterdir()]
+    dataset_paths = [str(x.relative_to(cmdline.load_path)) for x in p.iterdir()]
     dataset_paths.sort()
+
     # Load only files that contained the given string
     sequence_name = []
     if cmdline.sequence is not None:
@@ -93,17 +82,19 @@ def main(cmdline):
     else:
         sequence_name = dataset_paths
 
-    # Create repository if it doesn't exist
-    os.makedirs(os.path.dirname(cmdline.save_path), exist_ok=True)
+    # Create directory if it doesn't exist
+    os.makedirs(cmdline.save_path, exist_ok=True)
 
     i = 0
     for path_img in sequence_name:
         printProgressBar(i, len(sequence_name), path_img)
-        # Forward our image into the model with the specified ɸ
-        out_img = inference(model, opt, cmdline.load_path + path_img, cmdline.phi)
-        # Saving the generated image
-        save_path = cmdline.save_path + path_img.split("/")[-1]
-        out_img.save(save_path)
+        # Loop over phi values from 0 to 2pi with increments of 0.2
+        for phi in torch.arange(0, 2 * pi, 0.2):
+            # Forward our image into the model with the specified ɸ
+            out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
+            # Saving the generated image with phi in the filename
+            save_path = os.path.join(cmdline.save_path, f"{os.path.splitext(os.path.basename(path_img))[0]}_phi_{phi:.1f}.png")
+            out_img.save(save_path)
         i += 1
 
 if __name__ == '__main__':
@@ -115,3 +106,4 @@ if __name__ == '__main__':
     ap.add_argument('--phi', default=0.0, type=float, help='Choose the angle of the sun 𝜙 between [0,2𝜋], which maps to a sun elevation ∈ [+30◦,−40◦]')
     main(ap.parse_args())
     print("\n")
+    
