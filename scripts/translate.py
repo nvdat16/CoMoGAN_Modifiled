@@ -73,13 +73,11 @@ def main(cmdline):
     opt.no_flip = True
     # Load parameters to the model, load the checkpoint
     model = create_model(opt)
-    model = model.load_from_checkpoint((os.path.join(root_dir, 'checkpoints/', CHECKPOINT)))
-    checkpoint = torch.load(
-        os.path.join(root_dir, "checkpoints", CHECKPOINT),
+    model = model.load_from_checkpoint(
+        os.path.join(root_dir, 'checkpoints', CHECKPOINT),
         map_location="cpu",
-        weights_only=True
+        weights_only=False  # thêm dòng này
     )
-    model.load_state_dict(checkpoint)
     # Transfer the model to the GPU
     model.to('cuda');
     # Load paths of all files contain in /Day
