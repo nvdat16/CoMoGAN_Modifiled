@@ -37,25 +37,19 @@ def inference(model, opt, A_path, phi):
     return ToPILImage()((img_fake[0].cpu() + 1) / 2)
 
 def main(cmdline):
-    if cmdline.checkpoint is None:
-        # Load names of directories inside /logs
-        p = pathlib.Path('./logs')
-        list_run_id = [x.name for x in p.iterdir() if x.is_dir()]
-        
-        BASE_DIR = os.getcwd()
-        RUN_ID = list_run_id[0]
-        root_dir = os.path.join(BASE_DIR,'logs', RUN_ID, 'tensorboard', 'default', 'version_0')
-        p = pathlib.Path(root_dir + '/checkpoints')
-        # Load a list of checkpoints, use the last one by default
-        list_checkpoint = [x.name for x in p.iterdir() if 'iter' in x.name]
-        list_checkpoint.sort(reverse=True, key=lambda x: int(x.split('_')[1].split('.pth')[0]))
+    # Load names of directories inside /logs
+    p = pathlib.Path('./logs')
+    list_run_id = [x.name for x in p.iterdir() if x.is_dir()]
 
-        CHECKPOINT = list_checkpoint[0]
-    else:
-        RUN_ID = os.path.basename(cmdline.checkpoint.split("/tensorboard")[0])
-        root_dir = os.path.dirname(cmdline.checkpoint.split("/checkpoints")[0])
-        CHECKPOINT = os.path.basename(cmdline.checkpoint.split('checkpoints/')[1])
+    RUN_ID = list_run_id[0]
+    root_dir = os.path.join('logs', RUN_ID, 'tensorboard', 'default', 'version_0')
+    p = pathlib.Path(root_dir + '/checkpoints')
+    # Load a list of checkpoints, use the last one by default
+    list_checkpoint = [x.name for x in p.iterdir() if 'iter' in x.name]
+    list_checkpoint.sort(reverse=True, key=lambda x: int(x.split('_')[1].split('.pth')[0]))
 
+    CHECKPOINT = list_checkpoint[0]
+    
     print(f"Load checkpoint {CHECKPOINT} from {RUN_ID}")
 
     # Load parameters
