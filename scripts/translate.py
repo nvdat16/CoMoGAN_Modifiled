@@ -57,9 +57,9 @@ def main(cmdline):
         opt = Munch(yaml.safe_load(cfg_file))
 
     opt.no_flip = True
-    # Load parameters to the model, load the checkpoint
-    model = create_model(opt)
-    model = model.load_from_checkpoint(os.path.join(root_dir, 'checkpoints', CHECKPOINT))
+    # Load model class and load checkpoint
+    model_class = create_model(opt).__class__
+    model = model_class.load_from_checkpoint(os.path.join(root_dir, 'checkpoints', CHECKPOINT), opt=opt)
     # Transfer the model to the GPU
     model.to(device)
 
