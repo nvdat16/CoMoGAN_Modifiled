@@ -96,8 +96,8 @@ def main(cmdline):
     i = 0
     for path_img in sequence_name:
         printProgressBar(i, len(sequence_name), path_img)
-        # Loop over phi values from pi to 3/2pi with increments of 0.2
-        for phi in torch.arange(pi, 3 * pi / 2, 0.2):
+        # Loop over phi values from pi/2 to 3/2pi with increments of 0.2
+        for phi in torch.arange(pi/2, 3*pi/2, 0.2):
             # Forward our image into the model with the specified ɸ
             out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
             # Saving the generated image with phi in the filename
@@ -106,7 +106,7 @@ def main(cmdline):
             del out_img
             torch.cuda.empty_cache()
         i += 1
-        
+
 if __name__ == '__main__':
     ap = AP()
     ap.add_argument('--load_path', default='/datasets/waymo_comogan/val/sunny/Day/', type=str, help='Set a path to load the dataset to translate')
