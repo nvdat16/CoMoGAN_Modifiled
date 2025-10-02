@@ -41,9 +41,10 @@ def main(cmdline):
         # Load names of directories inside /logs
         p = pathlib.Path('./logs')
         list_run_id = [x.name for x in p.iterdir() if x.is_dir()]
-
+        
+        BASE_DIR = os.getcwd()
         RUN_ID = list_run_id[0]
-        root_dir = os.path.join('logs', RUN_ID, 'tensorboard', 'default', 'version_0')
+        root_dir = os.path.join(BASE_DIR,'logs', RUN_ID, 'tensorboard', 'default', 'version_0')
         p = pathlib.Path(root_dir + '/checkpoints')
         # Load a list of checkpoints, use the last one by default
         list_checkpoint = [x.name for x in p.iterdir() if 'iter' in x.name]
@@ -88,13 +89,13 @@ def main(cmdline):
     i = 0
     for path_img in sequence_name:
         printProgressBar(i, len(sequence_name), path_img)
-        # Loop over phi values from 0 to 2pi with increments of 0.2
-        for phi in torch.arange(0, 2 * pi, 0.2):
-            # Forward our image into the model with the specified ɸ
-            out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
-            # Saving the generated image with phi in the filename
-            save_path = os.path.join(cmdline.save_path, f"{os.path.splitext(os.path.basename(path_img))[0]}_phi_{phi:.1f}.png")
-            out_img.save(save_path)
+        phi = cmdline.phi  # dùng tham số từ command line
+        out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
+        save_path = os.path.join(
+            cmdline.save_path,
+            f"{os.path.splitext(os.path.basename(path_img))[0]}_phi_{phi:.1f}.png"
+        )
+        out_img.save(save_path)
         i += 1
 
 if __name__ == '__main__':
