@@ -96,8 +96,8 @@ def main(cmdline):
     i = 0
     for path_img in sequence_name:
         printProgressBar(i, len(sequence_name), path_img)
-        # Loop over phi values from pi/2 to 3/2pi with increments of 0.2
-        for phi in torch.arange(pi/2, 3*pi/2, 0.2):
+        # Loop over phi values from 1.8 to 2.2 with increments of 0.05
+        for phi in torch.arange(1.8, 2.2, 0.05):
             # Forward our image into the model with the specified ɸ
             out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
             # Saving the generated image with phi in the filename
