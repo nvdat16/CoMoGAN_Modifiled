@@ -80,18 +80,33 @@ def main(cmdline):
     # Create directory if it doesn't exist
     os.makedirs(cmdline.save_path, exist_ok=True)
 
+    # i = 0
+    # for path_img in sequence_name:
+    #     printProgressBar(i, len(sequence_name), path_img)
+    #     phi = cmdline.phi  # dùng tham số từ command line
+    #     out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
+    #     save_path = os.path.join(
+    #         cmdline.save_path,
+    #         f"{os.path.splitext(os.path.basename(path_img))[0]}_phi_{phi:.1f}.png"
+    #     )
+    #     out_img.save(save_path)
+    #     del out_img
+    #     torch.cuda.empty_cache()
+    #     i += 1
     i = 0
     for path_img in sequence_name:
         printProgressBar(i, len(sequence_name), path_img)
-        phi = cmdline.phi  # dùng tham số từ command line
-        out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
-        save_path = os.path.join(
-            cmdline.save_path,
-            f"{os.path.splitext(os.path.basename(path_img))[0]}_phi_{phi:.1f}.png"
-        )
-        out_img.save(save_path)
+        # Loop over phi values from pi to 3/2pi with increments of 0.2
+        for phi in torch.arange(pi, 3 * pi / 2, 0.2):
+            # Forward our image into the model with the specified ɸ
+            out_img = inference(model, opt, os.path.join(cmdline.load_path, path_img), phi)
+            # Saving the generated image with phi in the filename
+            save_path = os.path.join(cmdline.save_path, f"{os.path.splitext(os.path.basename(path_img))[0]}_phi_{phi:.1f}.png")
+            out_img.save(save_path)
+            del out_img
+            torch.cuda.empty_cache()
         i += 1
-
+        
 if __name__ == '__main__':
     ap = AP()
     ap.add_argument('--load_path', default='/datasets/waymo_comogan/val/sunny/Day/', type=str, help='Set a path to load the dataset to translate')
