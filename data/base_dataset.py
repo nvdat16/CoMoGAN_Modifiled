@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class BaseDataset(data.Dataset, ABC):
     """This class is an abstract base class (ABC) for datasets.
+
     To create a subclass, you need to implement the following four functions:
     -- <__init__>:                      initialize the class, first call BaseDataset.__init__(self, opt).
     -- <__len__>:                       return the size of dataset.
@@ -24,6 +25,7 @@ class BaseDataset(data.Dataset, ABC):
 
     def __init__(self, opt):
         """Initialize the class; save the options in the class
+
         Parameters:
             opt (Option class)-- stores all the experiment flags; needs to be a subclass of BaseOptions
         """
@@ -38,8 +40,10 @@ class BaseDataset(data.Dataset, ABC):
     @abstractmethod
     def __getitem__(self, index):
         """Return a data point and its metadata information.
+
         Parameters:
             index - - a random integer for data indexing
+
         Returns:
             a dictionary of data with their names. It ususally contains the data itself and its metadata information.
         """
@@ -63,37 +67,43 @@ def get_params(opt, size):
     return {'crop_pos': (x, y), 'flip': flip}
 
 
-def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, convert=True):
+def __resize_max(img, max_size=1, method=Image.BICUBIC):
+    ow, oh = img.size
+    scale = min(max_size / ow, max_size / oh, 1.0)
+    new_w, new_h = int(ow * scale), int(oh * scale)
+    print(f"[DEBUG] Resize: ({ow}, {oh}) -> ({new_w}, {new_h})")
+    return img.resize((new_w, new_h), method)
+
+
+def __resize_and_pad(img, size=512, method=Image.BICUBIC):
+    ow, oh = img.size
+    scale = min(size / ow, size / oh)
+    new_w, new_h = int(ow * scale), int(oh * scale)
+    img = img.resize((new_w, new_h), method)
+
+    # Pad cho đủ (256, 256)
+    new_img = Image.new("RGB", (size, size))
+    new_img.paste(img, ((size - new_w) // 2, (size - new_h) // 2))
+    return new_img
+
+
+def get_transform(opt=None, params=None, grayscale=False, method=Image.BICUBIC, convert=True):
     transform_list = []
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
-    if 'resize' in opt.preprocess:
-        osize = [opt.load_size, opt.load_size]
-        transform_list.append(transforms.Resize(osize, method))
-    elif 'scale_width' in opt.preprocess:
-        transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size, opt.crop_size, method)))
 
-    if 'crop' in opt.preprocess:
-        if params is None:
-            transform_list.append(transforms.RandomCrop(opt.crop_size))
-        else:
-            transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'], opt.crop_size)))
+    # 🔥 Resize + Pad
+    transform_list.append(transforms.Lambda(lambda img: __resize_and_pad(img, 512, method)))
 
-    if opt.preprocess == 'none':
-        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base=1, method=method)))
-
-    if not opt.no_flip:
-        if params is None:
-            transform_list.append(transforms.RandomHorizontalFlip())
-        elif params['flip']:
-            transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+    transform_list.append(transforms.RandomHorizontalFlip())
 
     if convert:
         transform_list += [transforms.ToTensor()]
         if grayscale:
             transform_list += [transforms.Normalize((0.5,), (0.5,))]
         else:
-            transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+            transform_list += [transforms.Normalize((0.5, 0.5, 0.5),
+                                                    (0.5, 0.5, 0.5))]
     return transforms.Compose(transform_list)
 
 
